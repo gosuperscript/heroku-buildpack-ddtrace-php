@@ -5,9 +5,13 @@ BUILD_DIR=$1
 CACHE_DIR=$2
 ENV_DIR=${3:-}
 
+APT_DIR="$BUILD_DIR/.apt"
+
+mkdir -p $APT_DIR
+
 curl -LO https://github.com/DataDog/dd-trace-php/releases/latest/download/datadog-setup.php
 
-INSTALL_DIR="$BUILD_DIR/.datadog"
+INSTALL_DIR="$APT_DIR/opt/datadog"
 
 php datadog-setup.php \
     --install-dir=$INSTALL_DIR \
