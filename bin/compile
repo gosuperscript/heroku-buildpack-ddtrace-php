@@ -15,6 +15,6 @@ INSTALL_DIR="$APT_DIR/opt/datadog"
 
 php datadog-setup.php \
     --install-dir=$INSTALL_DIR \
-    --php-bin=all \
+    --php-bin=/app/.heroku/php/bin/php \
     --enable-appsec \
     --enable-profiling
