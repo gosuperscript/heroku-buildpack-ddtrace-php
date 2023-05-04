@@ -1,8 +1,16 @@
-#!/bin/sh
+#!/usr/bin/env bash
+# bin/compile <build-dir> <cache-dir> <env-dir>
+
+BUILD_DIR=$1
+CACHE_DIR=$2
+ENV_DIR=${3:-}
 
 curl -LO https://github.com/DataDog/dd-trace-php/releases/latest/download/datadog-setup.php
 
+INSTALL_DIR="$BUILD_DIR/.datadog"
+
 php datadog-setup.php \
+    --install-dir=$INSTALL_DIR \
     --php-bin=all \
     --enable-appsec \
     --enable-profiling
