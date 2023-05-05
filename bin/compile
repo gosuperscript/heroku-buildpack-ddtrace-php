@@ -10,83 +10,129 @@ ENV_DIR=$3
 BUILDPACK_DIR=$(cd "$(dirname "$0")"; cd ..; pwd)
 
 function error() {
-    echo " !     $*" >&2
-    exit 1
+  echo " !     $*" >&2
+  exit 1
 }
 
 function topic() {
-    echo "-----> $*"
+  echo "-----> $*"
 }
 
 function indent() {
-    c='s/^/       /'
-    case $(uname) in
-        Darwin) sed -l "$c";;
-        *)      sed -u "$c";;
-    esac
+  c='s/^/       /'
+  case $(uname) in
+    Darwin) sed -l "$c";;
+    *)      sed -u "$c";;
+  esac
 }
 
-# Setup apt environment
-APT_DIR="$BUILD_DIR/.apt"
-APT_CACHE_DIR="$CACHE_DIR/apt/cache"
-APT_STATE_DIR="$CACHE_DIR/apt/state"
-APT_REPO_FILE="$BUILDPACK_DIR/etc/datadog.list"
-APT_REPO_FILE_7="$BUILDPACK_DIR/etc/datadog7.list"
-APT_OPTIONS="-o debug::nolocking=true -o dir::cache=$APT_CACHE_DIR -o dir::state=$APT_STATE_DIR"
+ARCH=$(uname -m)
+PLATFORM="$ARCH-linux-gnu"
 
-# Create build and run environment
-mkdir -p "$APT_CACHE_DIR/archives/partial"
-mkdir -p "$APT_STATE_DIR/lists/partial"
-mkdir -p "$APT_DIR"
+PHP_API=$(php -i | grep "^PHP API" | sed "s/^.* => //")
+PHP_CONF_DIR="$BUILD_DIR/.heroku/php/etc/php/conf.d"
+PHP_EXTENSION_DIR=$(php -i | grep "^extension_dir" | sed "s/^.* => //")
 
-PACKAGE_NAME=datadog-php-tracer
-PACKAGE_FILE=$APT_CACHE_DIR/archives/$PACKAGE_NAME.deb
-
-if [[ -n ${DDTRACE_EXT_RELEASE:-} ]]; then
-    echo "Using dd-trace-php release '$DDTRACE_EXT_RELEASE' (from "'$DDTRACE_EXT_RELEASE env var).' | indent
+if [ -f "$ENV_DIR/DD_ENABLE_PROFILING" ]; then
+  DD_ENABLE_PROFILING=$(cat "$ENV_DIR/DD_ENABLE_PROFILING")
 else
-    export DDTRACE_EXT_RELEASE="0.86.3"
-    echo "Using dd-trace-php release '$DDTRACE_EXT_RELEASE' (default value)." | indent
-fi
-export DDTRACE_EXT_PKG_URL="https://github.com/DataDog/dd-trace-php/releases/download/"$DDTRACE_EXT_RELEASE"/"$PACKAGE_NAME"_"$DDTRACE_EXT_RELEASE"_amd64.deb"
-
-topic "Downloading $PACKAGE_NAME from $DDTRACE_EXT_PKG_URL"
-curl --silent --show-error --fail --location --output $PACKAGE_FILE $DDTRACE_EXT_PKG_URL 2>&1 | indent
-
-topic "Installing $PACKAGE_NAME"
-dpkg -x $PACKAGE_FILE $APT_DIR
-
-if [[ -n ${DDTRACE_EXT_PHP_API:-} ]]; then
-    echo "Using version '$DDTRACE_EXT_PHP_API' (from "'$DDTRACE_EXT_PHP_API env var).' | indent
-else
-    export DDTRACE_EXT_PHP_API="20220829"
-    echo "Using version '$DDTRACE_EXT_PHP_API' (default value)." | indent
+  DD_ENABLE_PROFILING=false
 fi
 
-PACKAGE_NAME=dd-library-php
-PACKAGE_FILE=$APT_CACHE_DIR/archives/$PACKAGE_NAME.tar.gz
+if [ -f "$ENV_DIR/DD_ENABLE_APPSEC" ]; then
+  DD_ENABLE_APPSEC=$(cat "$ENV_DIR/DD_ENABLE_APPSEC")
+else
+  DD_ENABLE_APPSEC=false
+fi
 
-DDTRACE_LIB_URL="https://github.com/DataDog/dd-trace-php/releases/download/"$DDTRACE_EXT_RELEASE"/"$PACKAGE_NAME"-"$DDTRACE_EXT_RELEASE"-x86_64-linux-gnu.tar.gz"
+RELEASE_VERSION="0.86.3"
+RELEASE_PREFIX="https://github.com/DataDog/dd-trace-php/releases/download/$RELEASE_VERSION"
 
-topic "Downloading $PACKAGE_NAME"
-curl --silent --show-error --fail --location --output $PACKAGE_FILE $DDTRACE_LIB_URL 2>&1 | indent
+TMP_DIR=$(dirname $(mktemp -u))/dd-install
 
-topic "Installing $PACKAGE_NAME"
-tar zxf $PACKAGE_FILE --directory $APT_DIR/opt
+mkdir -p $TMP_DIR
 
-INSTALL_DIR="/app/.apt/opt/dd-library-php"
+RELEASE_URL="$RELEASE_PREFIX/dd-library-php-$RELEASE_VERSION-$PLATFORM.tar.gz"
+TMP_TAR="$TMP_DIR/dd-library-php.tar.gz"
 
-topic "Enabling $PACKAGE_NAME"
+topic "Downloading DD Trace PHP from $RELEASE_URL"
 
-INI_FILE_NAME="98-ddtrace.ini"
-INI_FILE=/app/.heroku/php/etc/php/conf.d/$INI_FILE_NAME
+curl --silent --show-error --fail --location --output $TMP_TAR $RELEASE_URL 2>&1 | indent
+
+tar -xf $TMP_TAR -C $TMP_DIR
+
+TMP_EXTRACTED_ROOT="$TMP_DIR/dd-library-php"
+TMP_TRACE_ROOT="$TMP_EXTRACTED_ROOT/trace"
+TMP_TRACE_BRIDGE="$TMP_TRACE_ROOT/bridge"
+TMP_APPSEC_ROOT="$TMP_EXTRACTED_ROOT/appsec"
+TMP_APPSEC_BIN="$TMP_APPSEC_ROOT/bin"
+TMP_APPSEC_ETC="$TMP_APPSEC_ROOT/etc"
+TMP_PROFILING_ROOT="$TMP_EXTRACTED_ROOT/profiling"
+
+INSTALL_DIR="$BUILD_DIR/.heroku/datadog/dd-trace-sources"
+
+topic "Installing required sources files to $INSTALL_DIR"
+
+mkdir -p $INSTALL_DIR
+cp -r $TMP_TRACE_BRIDGE $INSTALL_DIR
+cp -r $TMP_APPSEC_BIN $INSTALL_DIR
+cp -r $TMP_APPSEC_ETC $INSTALL_DIR
+
+INSTALL_DIR="/app/.heroku/datadog/dd-trace-sources"
+
+TRACE_WRAPPER_PATH="$INSTALL_DIR/bridge/dd_wrap_autoloader.php"
+APPSEC_RULES_PATH="$INSTALL_DIR/etc/recommended.json"
+APPSEC_HELPER_PATH="$INSTALL_DIR/bin/appsec-helper"
+
+
+topic "Installing extensions to $PHP_EXTENSION_DIR"
+
+DD_EXTENSION_PATH="$TMP_TRACE_ROOT/ext/$PHP_API/ddtrace.so"
+DD_EXTENSION_DEST="$PHP_EXTENSION_DIR/ddtrace.so"
+
+cp $DD_EXTENSION_PATH $DD_EXTENSION_DEST
+
+DD_PROFILING_EXTENSION_PATH="$TMP_PROFILING_ROOT/ext/$PHP_API/datadog-profiling.so"
+DD_PROFILING_EXTENSION_DEST="$PHP_EXTENSION_DIR/datadog-profiling.so"
+
+cp $DD_PROFILING_EXTENSION_PATH $DD_PROFILING_EXTENSION_DEST
+
+DD_APPSEC_EXTENSION_PATH="$TMP_APPSEC_ROOT/ext/$PHP_API/ddappsec.so"
+DD_APPSEC_EXTENSION_DEST="$PHP_EXTENSION_DIR/ddappsec.so"
+
+cp $DD_APPSEC_EXTENSION_PATH $DD_APPSEC_EXTENSION_DEST
+
+
+topic "Configuring extensions in $PHP_CONF_DIR"
+
+INI_FILE="$PHP_CONF_DIR/98-ddtrace.ini"
 
 touch $INI_FILE
 
-echo "[PHP]" >> $INI_FILE
-echo "extension=$INSTALL_DIR/trace/ext/$DDTRACE_EXT_PHP_API/ddtrace.so" >> $INI_FILE
-echo "ddtrace.request_init_hook=$INSTALL_DIR/trace/bridge/dd_wrap_autoloader.php" >> $INI_FILE
-echo "extension=$INSTALL_DIR/profiling/ext/$DDTRACE_EXT_PHP_API/datadog-profiling.so" >> $INI_FILE
-echo "datadog.profiling.log_level=trace" >> $INI_FILE
+cat <<EOT >> $INI_FILE
+[PHP]
+extension=ddtrace.so
+
+datadog.trace.request_init_hook=$TRACE_WRAPPER_PATH
+datadog.appsec.helper_path=$APPSEC_HELPER_PATH
+datadog.appsec.rules=$APPSEC_RULES_PATH
+datadog.appsec.enabled=On
+EOT
+
+if [[ $DD_ENABLE_PROFILING = true ]]; then
+  topic "Profiling is enabled"
+
+  echo "extension=datadog-profiling.so" >> $INI_FILE
+else
+  topic "Profiling is disabled"
+fi
+
+if [[ $DD_ENABLE_APPSEC = true ]]; then
+  topic "Appsec is enabled"
+
+  echo "extension=ddappsec.so" >> $INI_FILE
+else
+  topic "Appsec is disabled"
+fi
 
 echo "Done" | indent
