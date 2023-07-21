@@ -51,7 +51,7 @@ TMP_DIR=$(dirname $(mktemp -u))/dd-install
 
 mkdir -p $TMP_DIR
 
-RELEASE_URL="$RELEASE_PREFIX/dd-library-php-$RELEASE_VERSION-$PLATFORM.tar.gz"
+RELEASE_URL="$RELEASE_PREFIX/dd-library-php-${RELEASE_VERSION-latest}-$PLATFORM.tar.gz"
 TMP_TAR="$TMP_DIR/dd-library-php.tar.gz"
 
 topic "Downloading DD Trace PHP from $RELEASE_URL"
