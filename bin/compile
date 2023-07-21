@@ -45,8 +45,7 @@ else
   DD_ENABLE_APPSEC=false
 fi
 
-RELEASE_VERSION="0.86.3"
-RELEASE_PREFIX="https://github.com/DataDog/dd-trace-php/releases/download/$RELEASE_VERSION"
+RELEASE_PREFIX="https://github.com/DataDog/dd-trace-php/releases/download/${DDTRACE_RELEASE-latest}"
 
 TMP_DIR=$(dirname $(mktemp -u))/dd-install
 
