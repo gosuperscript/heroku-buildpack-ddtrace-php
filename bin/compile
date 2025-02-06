@@ -40,7 +40,7 @@ DDTRACE_SETUP="$TMP_DIR/datadog-setup.php"
 
 topic "Downloading DD Trace PHP from $RELEASE_URL"
 
-curl -L $RELEASE_URL --output $DDTRACE_SETUP | indent
+curl -L $RELEASE_URL --output $DDTRACE_SETUP --silent | indent
 
 topic "Installing DD Trace PHP"
 
@@ -49,4 +49,4 @@ php $DDTRACE_SETUP \
   --ini $BUILD_DIR/.heroku/php/etc/php/conf.d/98-ddtrace.ini \
   --php-bin=all \
   --enable-profiling \
-  --enable-appsec
+  --enable-appsec | indent
