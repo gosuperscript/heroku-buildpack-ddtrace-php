@@ -3,6 +3,30 @@
 
 set -eo pipefail
 
+if [ -f "$ENV_DIR/DDTRACE_RELEASE" ]; then
+  RELEASE_VERSION=$(cat "$ENV_DIR/DDTRACE_RELEASE")
+else
+  RELEASE_VERSION=latest
+fi
+
+$TMP_DIR=$(dirname $(mktemp -u))/dd-install
+
+mkdir -p $TMP_DIR
+
+$DDTRACE_SETUP="$TMP_DIR/datadog-setup.php"
+
+$RELEASE_URL="https://github.com/DataDog/dd-trace-php/releases/$RELEASE_VERSION/download/datadog-setup.php"
+
+topic "Downloading DD Trace PHP from $RELEASE_URL"
+
+curl -LO $RELEASE_URL --output $DDTRACE_SETUP | indent
+
+topic "Installing DD Trace PHP"
+
+php $DDTRACE_SETUP --php-bin=all --enable-profiling --enable-appsec
+
+exit 0
+
 # Parse and derive params
 BUILD_DIR=$1
 CACHE_DIR=$2
