@@ -38,14 +38,17 @@ TMP_DIR=$(mktemp --directory)
 
 DDTRACE_SETUP="$TMP_DIR/datadog-setup.php"
 
-
 topic "Downloading DD Trace PHP from $RELEASE_URL"
 
 curl -L $RELEASE_URL --output $DDTRACE_SETUP | indent
 
 topic "Installing DD Trace PHP"
 
-php $DDTRACE_SETUP --php-bin=all --enable-profiling --enable-appsec
+php $DDTRACE_SETUP \
+  --install-dir $TMP_DIR \
+  --php-bin=all \
+  --enable-profiling \
+  --enable-appsec
 
 topic "Finished installing DD Trace PHP"
 
