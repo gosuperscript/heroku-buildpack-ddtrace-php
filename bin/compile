@@ -28,15 +28,16 @@ function indent() {
 
 if [ -f "$ENV_DIR/DDTRACE_RELEASE" ]; then
   RELEASE_VERSION=$(cat "$ENV_DIR/DDTRACE_RELEASE")
+  RELEASE_URL="https://github.com/DataDog/dd-trace-php/releases/download/$RELEASE_VERSION/datadog-setup.php"
 else
   RELEASE_VERSION=latest
+  RELEASE_URL="https://github.com/DataDog/dd-trace-php/releases/latest/download/datadog-setup.php"
 fi
 
 TMP_DIR=$(mktemp --directory)
 
 DDTRACE_SETUP="$TMP_DIR/datadog-setup.php"
 
-RELEASE_URL="https://github.com/DataDog/dd-trace-php/releases/$RELEASE_VERSION/download/datadog-setup.php"
 
 topic "Downloading DD Trace PHP from $RELEASE_URL"
 
