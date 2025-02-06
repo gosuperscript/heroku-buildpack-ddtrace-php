@@ -3,6 +3,29 @@
 
 set -eo pipefail
 
+# Parse and derive params
+BUILD_DIR=$1
+CACHE_DIR=$2
+ENV_DIR=$3
+BUILDPACK_DIR=$(cd "$(dirname "$0")"; cd ..; pwd)
+
+function error() {
+  echo " !     $*" >&2
+  exit 1
+}
+
+function topic() {
+  echo "-----> $*"
+}
+
+function indent() {
+  c='s/^/       /'
+  case $(uname) in
+    Darwin) sed -l "$c";;
+    *)      sed -u "$c";;
+  esac
+}
+
 if [ -f "$ENV_DIR/DDTRACE_RELEASE" ]; then
   RELEASE_VERSION=$(cat "$ENV_DIR/DDTRACE_RELEASE")
 else
@@ -24,6 +47,8 @@ topic "Installing DD Trace PHP"
 php $DDTRACE_SETUP --php-bin=all --enable-profiling --enable-appsec
 
 exit 0
+
+## END
 
 # Parse and derive params
 BUILD_DIR=$1
