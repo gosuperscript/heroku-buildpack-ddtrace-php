@@ -9,9 +9,7 @@ else
   RELEASE_VERSION=latest
 fi
 
-$TMP_DIR=$(dirname $(mktemp -u))/dd-install
-
-mkdir -p $TMP_DIR
+TMP_DIR=$(mktemp --directory)
 
 $DDTRACE_SETUP="$TMP_DIR/datadog-setup.php"
 
