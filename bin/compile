@@ -40,7 +40,7 @@ RELEASE_URL="https://github.com/DataDog/dd-trace-php/releases/$RELEASE_VERSION/d
 
 topic "Downloading DD Trace PHP from $RELEASE_URL"
 
-curl -LO $RELEASE_URL --output $DDTRACE_SETUP | indent
+curl -L $RELEASE_URL --output $DDTRACE_SETUP | indent
 
 topic "Installing DD Trace PHP"
 
