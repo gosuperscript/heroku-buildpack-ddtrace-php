@@ -46,6 +46,8 @@ topic "Installing DD Trace PHP"
 
 php $DDTRACE_SETUP --php-bin=all --enable-profiling --enable-appsec
 
+topic "Finished installing DD Trace PHP"
+
 exit 0
 
 ## END
