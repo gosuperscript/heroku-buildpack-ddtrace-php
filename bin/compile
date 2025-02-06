@@ -46,7 +46,7 @@ topic "Installing DD Trace PHP"
 
 php $DDTRACE_SETUP \
   --install-dir $BUILD_DIR/datadog \
-  --ini $BUILD_DIR/.heroku/php/bin/php \
+  --ini $BUILD_DIR/.heroku/php/etc/php/conf.d/98-ddtrace.ini \
   --php-bin=all \
   --enable-profiling \
   --enable-appsec
